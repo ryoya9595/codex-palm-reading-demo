@@ -293,7 +293,10 @@ function appendQa(role, text) {
 
 async function askFollowup(question) {
   const q = String(question || $("followInput").value || "").trim();
-  if (!q) return;
+  if (!q) {
+    setLine($("followStatus"), "質問を入力してください", "err");
+    return;
+  }
   const key = getKey();
   if (!key) {
     setLine($("followStatus"), "先に設定からAPIキーを登録してください", "err");
