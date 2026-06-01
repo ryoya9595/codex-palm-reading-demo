@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src https://api.openai.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>手相占い診断</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="stars-bg"></div>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">AI PALM READING</p>
+        <h1>手相占い診断</h1>
+        <p class="lead">手のひらの写真を撮るだけ。AIがあなたの手相を読み解きます。</p>
+      </div>
+      <div class="hero-actions">
+        <span class="key-status" id="keyStatus">APIキー: 未設定</span>
+        <button type="button" id="openSettings" class="ghost">⚙ 設定</button>
+      </div>
+    </header>
+
+    <!-- 設定モーダル -->
+    <div class="modal-overlay is-hidden" id="settingsModal">
+      <div class="modal">
+        <div class="modal-head">
+          <h2>設定（OpenAI APIキー）</h2>
+          <button type="button" id="closeSettings" class="ghost">×</button>
+        </div>
+        <label>
+          <span>OpenAI APIキー</span>
+          <div class="key-row">
+            <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off" />
+            <button type="button" id="toggleKey" class="secondary">表示</button>
+          </div>
+        </label>
+        <p class="modal-note">キーは<strong>このブラウザ内にのみ保存</strong>され、診断時に<strong>OpenAIにのみ送信</strong>されます。共有PCでは使用後に「キーを削除」してください。</p>
+        <div class="modal-actions">
+          <button type="button" id="clearKey" class="secondary">キーを削除</button>
+          <button type="button" id="saveKey">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <main class="layout">
+      <section class="card uploader">
+        <h3>① 手のひらの写真を用意</h3>
+        <p class="hint">手のひら全体・線がはっきり写るように。明るい場所で、指を軽く開いて撮るときれいに読めます。</p>
+        <label class="drop" id="dropArea">
+          <input type="file" id="fileInput" accept="image/*" capture="environment" hidden />
+          <div class="drop-inner" id="dropInner">
+            <div class="drop-icon">🖐️</div>
+            <strong>写真を撮る / 選ぶ</strong>
+            <span>タップしてカメラ起動、またはファイル選択</span>
+          </div>
+          <img id="preview" class="preview is-hidden" alt="手のひらプレビュー" />
+        </label>
+        <div class="uploader-actions">
+          <button type="button" id="retakeButton" class="secondary is-hidden">撮り直す</button>
+          <button type="button" id="diagnoseButton">この手相を診断する</button>
+        </div>
+        <div class="status-line" id="status"></div>
+      </section>
+
+      <section class="card result is-hidden" id="resultCard">
+        <h3>診断結果</h3>
+        <div class="features" id="features"></div>
+        <div class="fortunes" id="fortunes"></div>
+        <div class="summary" id="summary"></div>
+        <div class="lucky" id="lucky"></div>
+        <p class="disclaimer">※ エンタメ目的の診断です。同じ特徴が読み取れた場合は同じ結果になるよう作られていますが、写真の写り方によって読み取り結果は変わることがあります。</p>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
