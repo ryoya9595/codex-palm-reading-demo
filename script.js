@@ -244,6 +244,22 @@ $("clearKey").addEventListener("click", () => {
 });
 
 fileInput.addEventListener("change", (e) => onFile(e.target.files[0]));
+
+const dropArea = $("dropArea");
+dropArea.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropArea.classList.add("dragover");
+});
+dropArea.addEventListener("dragleave", (e) => {
+  if (!dropArea.contains(e.relatedTarget)) dropArea.classList.remove("dragover");
+});
+dropArea.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropArea.classList.remove("dragover");
+  const f = e.dataTransfer?.files?.[0];
+  if (f && f.type.startsWith("image/")) onFile(f);
+  else setStatus("画像ファイルをドロップしてください", "err");
+});
 retakeButton.addEventListener("click", (e) => {
   e.preventDefault();
   imageDataUrl = "";

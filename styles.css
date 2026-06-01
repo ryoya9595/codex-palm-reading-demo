@@ -123,6 +123,7 @@ label > span { font-size: 12px; font-weight: 800; color: var(--muted); }
   min-height: 200px;
 }
 .drop:hover { border-color: var(--gold); }
+.drop.dragover { border-color: var(--gold); background: rgba(231, 196, 106, 0.12); }
 .drop-inner { display: grid; place-items: center; gap: 6px; text-align: center; padding: 40px 20px; }
 .drop-icon { font-size: 48px; }
 .drop-inner strong { font-size: 16px; }
