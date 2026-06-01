@@ -177,6 +177,47 @@ label > span { font-size: 12px; font-weight: 800; color: var(--muted); }
 .lucky-label { font-size: 11px; color: var(--muted); font-weight: 800; }
 .lucky-box strong { font-size: 13px; color: var(--gold); }
 
+/* ===== 深掘りQ&A ===== */
+.followup { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.followup h4 { margin: 0 0 10px; font-size: 15px; color: var(--gold); }
+.suggest-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.suggest-chip {
+  min-height: 0;
+  background: rgba(124, 92, 255, 0.16);
+  color: var(--ink);
+  border: 1px solid rgba(124, 92, 255, 0.35);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.suggest-chip:hover { background: rgba(124, 92, 255, 0.28); }
+.qa-row { display: flex; gap: 8px; }
+.qa-row input { flex: 1; }
+.qa-row button { flex: 0 0 auto; }
+.qa-log { display: grid; gap: 8px; margin-top: 12px; }
+.qa-q {
+  justify-self: end;
+  max-width: 88%;
+  background: rgba(231, 196, 106, 0.16);
+  border: 1px solid rgba(231, 196, 106, 0.3);
+  border-radius: 12px 12px 4px 12px;
+  padding: 9px 13px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.qa-a {
+  justify-self: start;
+  max-width: 92%;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--line);
+  border-radius: 12px 12px 12px 4px;
+  padding: 11px 14px;
+  font-size: 13.5px;
+  color: #e6e1f7;
+  white-space: pre-wrap;
+}
+
 .disclaimer { margin: 16px 0 0; font-size: 11px; color: var(--muted); }
 
 @media (max-width: 480px) {

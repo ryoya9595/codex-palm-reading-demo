@@ -14,6 +14,13 @@ const statusEl = $("status");
 const resultCard = $("resultCard");
 
 let imageDataUrl = "";
+let lastReadingContext = "";
+
+function setLine(el, text, kind) {
+  if (!el) return;
+  el.textContent = text || "";
+  el.className = "status-line" + (kind ? " " + kind : "");
+}
 
 function getKey() {
   return (localStorage.getItem(LS_KEY) || "").trim();
@@ -107,8 +114,9 @@ async function diagnose() {
     '"reading":"あなたの手相全体を読み解く、たっぷり長い総合コメント。8〜14文・2〜3段落（段落は\\nで区切る）。観察した特徴どうしを結びつけて、人柄・強み・今の流れ・これからのヒントまで、物語のように具体的に、前向きな語り口で。",' +
     '"fortunes":[{"name":"総合運","stars":4,"text":"..."},{"name":"恋愛運","stars":3,"text":"..."},{"name":"仕事運","stars":5,"text":"..."},{"name":"金運","stars":3,"text":"..."},{"name":"健康運","stars":4,"text":"..."}],' +
     '"summary":"総評（3〜4行）","lucky":{"color":"ラッキーカラー","item":"ラッキーアイテム","action":"今日の開運アクション"},' +
-    '"details":[{"name":"総合運","basis":"観察した特徴 → どのルールに当てはまるか → だからこの評価、という根拠を1〜2文で"},{"name":"恋愛運","basis":"..."},{"name":"仕事運","basis":"..."},{"name":"金運","basis":"..."},{"name":"健康運","basis":"..."}]}\n' +
-    "featuresは4〜6個。readingはたっぷり長く。fortunesとdetailsは必ずこの5項目・starsは1〜5の整数。detailsは各運勢の判定根拠（観察した特徴とルールの対応）を明確に。手のひらが判別できなければ {\"ok\":false,\"message\":\"手のひらがはっきり写っていません。明るい場所で手のひら全体を撮り直してください。\"} を返す。";
+    '"details":[{"name":"総合運","basis":"観察した特徴 → どのルールに当てはまるか → だからこの評価、という根拠を1〜2文で"},{"name":"恋愛運","basis":"..."},{"name":"仕事運","basis":"..."},{"name":"金運","basis":"..."},{"name":"健康運","basis":"..."}],' +
+    '"suggestions":["この手相の人が次に気になりそうな深掘り質問を4つ。短く。例：金運をもっと詳しく／結婚の時期は？／向いてる仕事は？／今年の運勢は？"]}\n' +
+    "featuresは4〜6個。readingはたっぷり長く。fortunesとdetailsは必ずこの5項目・starsは1〜5の整数。suggestionsは4つ・この手相に合わせた具体的な質問文。detailsは各運勢の判定根拠（観察した特徴とルールの対応）を明確に。手のひらが判別できなければ {\"ok\":false,\"message\":\"手のひらがはっきり写っていません。明るい場所で手のひら全体を撮り直してください。\"} を返す。";
 
   setStatus("手相を読み取り中…（10〜20秒ほど）", "loading");
   diagnoseButton.disabled = true;
@@ -249,8 +257,76 @@ function renderResult(out) {
   const toggle = $("toggleDetails");
   if (toggle) toggle.textContent = "細かい診断結果を見る ▼";
 
+  // 深掘り用コンテキスト ＋ 提案チップ ＋ ログ初期化
+  lastReadingContext =
+    "【特徴】" + (out.features || []).map((f) => `${f.name}:${f.value}`).join("、") +
+    "\n【総合コメント】" + (out.reading || "") +
+    "\n【運勢】" + (out.fortunes || []).map((f) => `${f.name}★${f.stars}:${f.text}`).join("／");
+  renderSuggestions(out.suggestions || []);
+  $("qaLog").innerHTML = "";
+  setLine($("followStatus"), "");
+
   resultCard.classList.remove("is-hidden");
   resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderSuggestions(list) {
+  const el = $("suggestChips");
+  el.innerHTML = "";
+  (list || []).slice(0, 4).forEach((q) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "suggest-chip";
+    b.textContent = q;
+    b.addEventListener("click", () => askFollowup(q));
+    el.appendChild(b);
+  });
+}
+
+function appendQa(role, text) {
+  const log = $("qaLog");
+  const div = document.createElement("div");
+  div.className = role === "Q" ? "qa-q" : "qa-a";
+  div.textContent = text;
+  log.appendChild(div);
+}
+
+async function askFollowup(question) {
+  const q = String(question || $("followInput").value || "").trim();
+  if (!q) return;
+  const key = getKey();
+  if (!key) {
+    setLine($("followStatus"), "先に設定からAPIキーを登録してください", "err");
+    openSettings();
+    return;
+  }
+  appendQa("Q", q);
+  $("followInput").value = "";
+  setLine($("followStatus"), "考え中…", "loading");
+  try {
+    const ruleBook = typeof PALM_KNOWLEDGE !== "undefined" ? PALM_KNOWLEDGE : "";
+    const sys =
+      "あなたは手相診断士です。下記の【診断結果】と【手相ルールブック】を踏まえ、相談者の質問に手相の観点からやさしく具体的に答えます。ルールブックの範囲を尊重し、エンタメとして前向きな語り口で。3〜6文程度。\n\n【診断結果】\n" +
+      lastReadingContext + "\n\n" + ruleBook;
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0.6,
+        messages: [{ role: "system", content: sys }, { role: "user", content: q }],
+      }),
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error("OpenAIエラー (" + res.status + "): " + t.slice(0, 200));
+    }
+    const data = await res.json();
+    appendQa("A", data.choices?.[0]?.message?.content || "");
+    setLine($("followStatus"), "");
+  } catch (e) {
+    setLine($("followStatus"), e.message, "err");
+  }
 }
 
 // events
@@ -305,6 +381,11 @@ retakeButton.addEventListener("click", (e) => {
   setStatus("");
 });
 diagnoseButton.addEventListener("click", diagnose);
+
+$("followSend").addEventListener("click", () => askFollowup());
+$("followInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") askFollowup();
+});
 
 $("toggleDetails").addEventListener("click", () => {
   const detailsEl = $("details");
