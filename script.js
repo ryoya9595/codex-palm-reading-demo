@@ -19,6 +19,7 @@ function getKey() {
   return (localStorage.getItem(LS_KEY) || "").trim();
 }
 function refreshKeyStatus() {
+  if (!keyStatus) return;
   keyStatus.textContent = getKey() ? "APIキー: 設定済み ✓" : "APIキー: 未設定";
   keyStatus.classList.toggle("set", !!getKey());
 }
