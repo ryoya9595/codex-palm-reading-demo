@@ -103,8 +103,12 @@ async function diagnose() {
     ruleBook;
   const user =
     "この手のひらを手相診断してください。出力はJSONのみ：\n" +
-    '{"ok":true,"features":[{"name":"生命線","value":"長くはっきり"}],"fortunes":[{"name":"総合運","stars":4,"text":"..."},{"name":"恋愛運","stars":3,"text":"..."},{"name":"仕事運","stars":5,"text":"..."},{"name":"金運","stars":3,"text":"..."},{"name":"健康運","stars":4,"text":"..."}],"summary":"総評（3〜4行）","lucky":{"color":"ラッキーカラー","item":"ラッキーアイテム","action":"今日の開運アクション"}}\n' +
-    "featuresは4〜6個。fortunesは必ずこの5項目・starsは1〜5の整数。手のひらが判別できなければ {\"ok\":false,\"message\":\"手のひらがはっきり写っていません。明るい場所で手のひら全体を撮り直してください。\"} を返す。";
+    '{"ok":true,"features":[{"name":"生命線","value":"長くはっきり"}],' +
+    '"reading":"あなたの手相全体を読み解く、たっぷり長い総合コメント。8〜14文・2〜3段落（段落は\\nで区切る）。観察した特徴どうしを結びつけて、人柄・強み・今の流れ・これからのヒントまで、物語のように具体的に、前向きな語り口で。",' +
+    '"fortunes":[{"name":"総合運","stars":4,"text":"..."},{"name":"恋愛運","stars":3,"text":"..."},{"name":"仕事運","stars":5,"text":"..."},{"name":"金運","stars":3,"text":"..."},{"name":"健康運","stars":4,"text":"..."}],' +
+    '"summary":"総評（3〜4行）","lucky":{"color":"ラッキーカラー","item":"ラッキーアイテム","action":"今日の開運アクション"},' +
+    '"details":[{"name":"総合運","basis":"観察した特徴 → どのルールに当てはまるか → だからこの評価、という根拠を1〜2文で"},{"name":"恋愛運","basis":"..."},{"name":"仕事運","basis":"..."},{"name":"金運","basis":"..."},{"name":"健康運","basis":"..."}]}\n' +
+    "featuresは4〜6個。readingはたっぷり長く。fortunesとdetailsは必ずこの5項目・starsは1〜5の整数。detailsは各運勢の判定根拠（観察した特徴とルールの対応）を明確に。手のひらが判別できなければ {\"ok\":false,\"message\":\"手のひらがはっきり写っていません。明るい場所で手のひら全体を撮り直してください。\"} を返す。";
 
   setStatus("手相を読み取り中…（10〜20秒ほど）", "loading");
   diagnoseButton.disabled = true;
@@ -165,6 +169,19 @@ function renderResult(out) {
     featuresEl.appendChild(chip);
   });
 
+  // reading（長い総合コメント）
+  const readingEl = $("reading");
+  readingEl.innerHTML = "";
+  String(out.reading || "")
+    .split(/\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .forEach((para) => {
+      const p = document.createElement("p");
+      p.textContent = para;
+      readingEl.appendChild(p);
+    });
+
   // fortunes
   const fortunesEl = $("fortunes");
   fortunesEl.innerHTML = "";
@@ -214,6 +231,23 @@ function renderResult(out) {
     box.append(lb, vv);
     luckyEl.appendChild(box);
   });
+
+  // details（根拠）— 初期は隠す
+  const detailsEl = $("details");
+  detailsEl.innerHTML = "";
+  (out.details || []).forEach((d) => {
+    const row = document.createElement("div");
+    row.className = "detail-row";
+    const name = document.createElement("strong");
+    name.textContent = d.name || "";
+    const basis = document.createElement("p");
+    basis.textContent = d.basis || "";
+    row.append(name, basis);
+    detailsEl.appendChild(row);
+  });
+  detailsEl.classList.add("is-hidden");
+  const toggle = $("toggleDetails");
+  if (toggle) toggle.textContent = "細かい診断結果を見る ▼";
 
   resultCard.classList.remove("is-hidden");
   resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -271,5 +305,11 @@ retakeButton.addEventListener("click", (e) => {
   setStatus("");
 });
 diagnoseButton.addEventListener("click", diagnose);
+
+$("toggleDetails").addEventListener("click", () => {
+  const detailsEl = $("details");
+  const hidden = detailsEl.classList.toggle("is-hidden");
+  $("toggleDetails").textContent = hidden ? "細かい診断結果を見る ▼" : "細かい診断結果を閉じる ▲";
+});
 
 refreshKeyStatus();

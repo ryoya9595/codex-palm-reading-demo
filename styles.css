@@ -144,6 +144,23 @@ label > span { font-size: 12px; font-weight: 800; color: var(--muted); }
 .feature-name { font-size: 11px; color: var(--gold); font-weight: 800; }
 .feature-value { font-size: 13px; font-weight: 700; }
 
+.reading {
+  border: 1px solid rgba(231, 196, 106, 0.3);
+  border-radius: 14px;
+  background: rgba(231, 196, 106, 0.07);
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+.reading p { margin: 0 0 10px; font-size: 14px; color: #efeaff; }
+.reading p:last-child { margin-bottom: 0; }
+
+.details-wrap { margin-top: 18px; }
+#toggleDetails { width: 100%; }
+.details { display: grid; gap: 10px; margin-top: 12px; }
+.detail-row { border-left: 3px solid var(--purple); background: rgba(124, 92, 255, 0.1); border-radius: 9px; padding: 10px 13px; }
+.detail-row strong { display: block; color: var(--gold); font-size: 13px; margin-bottom: 3px; }
+.detail-row p { margin: 0; font-size: 13px; color: #d8d1f2; }
+
 .fortunes { display: grid; gap: 12px; margin-bottom: 18px; }
 .fortune { border-left: 3px solid var(--gold); background: rgba(0, 0, 0, 0.18); border-radius: 10px; padding: 12px 14px; }
 .fortune-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
