@@ -1,6 +1,27 @@
-// 手相占い診断（OpenAI Vision・自分のAPIキー使用）
+// 手相占い診断（OpenAI Vision）
+// WORKER_URL を設定すると「視聴者はキー不要」モード（りょうやのキーをCloudflare Workerに隠して代理実行）。
+// 空のままだと従来どおり「各自のAPIキー」モード。
+const WORKER_URL = ""; // 例: https://palm-proxy.xxxx.workers.dev
+const USE_WORKER = !!WORKER_URL;
+
 const LS_KEY = "codex-palm-openai-key";
 const $ = (id) => document.getElementById(id);
+
+// OpenAI 呼び出し（Workerモード or 自分キーモードを自動で切り替え）
+async function callOpenAI(payload) {
+  if (USE_WORKER) {
+    return fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  }
+  return fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + getKey() },
+    body: JSON.stringify(payload),
+  });
+}
 
 const keyStatus = $("keyStatus");
 const settingsModal = $("settingsModal");
@@ -93,8 +114,7 @@ async function onFile(file) {
 const STARS = (n) => "★★★★★☆☆☆☆☆".slice(5 - Math.max(0, Math.min(5, n)), 10 - Math.max(0, Math.min(5, n)));
 
 async function diagnose() {
-  const key = getKey();
-  if (!key) {
+  if (!USE_WORKER && !getKey()) {
     setStatus("先に設定からAPIキーを登録してください", "err");
     openSettings();
     return;
@@ -122,25 +142,21 @@ async function diagnose() {
   setStatus("手相を読み取り中…（10〜20秒ほど）", "loading");
   diagnoseButton.disabled = true;
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        temperature: 0,
-        seed: 7,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: sys },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: user },
-              { type: "image_url", image_url: { url: imageDataUrl, detail: "high" } },
-            ],
-          },
-        ],
-      }),
+    const res = await callOpenAI({
+      model: "gpt-4o",
+      temperature: 0,
+      seed: 7,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: sys },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: user },
+            { type: "image_url", image_url: { url: imageDataUrl, detail: "high" } },
+          ],
+        },
+      ],
     });
     if (!res.ok) {
       const t = await res.text();
@@ -298,8 +314,7 @@ async function askFollowup(question) {
     setLine($("followStatus"), "質問を入力してください", "err");
     return;
   }
-  const key = getKey();
-  if (!key) {
+  if (!USE_WORKER && !getKey()) {
     setLine($("followStatus"), "先に設定からAPIキーを登録してください", "err");
     openSettings();
     return;
@@ -312,14 +327,10 @@ async function askFollowup(question) {
     const sys =
       "あなたは手相診断士です。下記の【診断結果】と【手相ルールブック】を踏まえ、相談者の質問に手相の観点からやさしく具体的に答えます。ルールブックの範囲を尊重し、エンタメとして前向きな語り口で。3〜6文程度。\n\n【診断結果】\n" +
       lastReadingContext + "\n\n" + ruleBook;
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.6,
-        messages: [{ role: "system", content: sys }, { role: "user", content: q }],
-      }),
+    const res = await callOpenAI({
+      model: "gpt-4o-mini",
+      temperature: 0.6,
+      messages: [{ role: "system", content: sys }, { role: "user", content: q }],
     });
     if (!res.ok) {
       const t = await res.text();
@@ -397,4 +408,9 @@ $("toggleDetails").addEventListener("click", () => {
   $("toggleDetails").textContent = hidden ? "細かい診断結果を見る ▼" : "細かい診断結果を閉じる ▲";
 });
 
+// Workerモードでは視聴者はキー不要 → 設定ボタンを隠す
+if (USE_WORKER) {
+  const s = $("openSettings");
+  if (s) s.style.display = "none";
+}
 refreshKeyStatus();
