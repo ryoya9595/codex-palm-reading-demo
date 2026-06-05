@@ -1,7 +1,7 @@
 // 手相占い診断（OpenAI Vision）
 // WORKER_URL を設定すると「視聴者はキー不要」モード（りょうやのキーをCloudflare Workerに隠して代理実行）。
 // 空のままだと従来どおり「各自のAPIキー」モード。
-const WORKER_URL = ""; // 例: https://palm-proxy.xxxx.workers.dev
+const WORKER_URL = "https://palm-proxy.ryoyatennis95s.workers.dev"; // りょうやのキーを隠す代理サーバー（視聴者キー不要）
 const USE_WORKER = !!WORKER_URL;
 
 const LS_KEY = "codex-palm-openai-key";
