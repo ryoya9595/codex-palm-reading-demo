@@ -53,7 +53,7 @@ function flashButton(btn, text) {
 }
 
 // 画像を縮小して dataURL に
-function fileToDataUrl(file, maxSize = 768) {
+function fileToDataUrl(file, maxSize = 1024) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -105,8 +105,9 @@ async function diagnose() {
   }
   const ruleBook = typeof PALM_KNOWLEDGE !== "undefined" ? PALM_KNOWLEDGE : "";
   const sys =
-    "あなたは経験豊富な手相診断士です。画像の手のひらを観察し、まず主要な線（生命線・知能線・感情線・運命線・太陽線・結婚線・財運線）と手の形・丘を、粗いカテゴリ（例：長い/短い、濃い/薄い、まっすぐ/カーブ、あり/なし、発達/平坦）で判定します。" +
-    "そのうえで、下記の【手相ルールブック】に厳密に従って意味づけし、判定した特徴だけを根拠に診断を導きます。ルールにない解釈で大きく飛躍させず、同じ特徴なら同じ診断になるようにしてください。手のひらがはっきり写っていない場合は ok:false を返します。\n\n" +
+    "あなたは経験豊富な手相診断士です。まず『この画像に実際に写っている』手のひらをよく観察し、主要な線（生命線・知能線・感情線・運命線・太陽線・結婚線・財運線）と手の形・丘を、粗いカテゴリ（例：長い/短い、濃い/薄い、まっすぐ/カーブ、あり/なし、発達/平坦）で判定します。" +
+    "重要：必ず画像から読み取った特徴だけを使うこと。テンプレート的な一般回答や、毎回同じ決め打ちの内容を返すことは禁止。線がはっきり見えない場合は推測せず ok:false を返す。" +
+    "そのうえで、下記の【手相ルールブック】に厳密に従って意味づけし、判定した特徴だけを根拠に診断を導きます。ルールにない解釈で大きく飛躍させず、同じ特徴なら同じ診断・違う特徴なら違う診断になるようにしてください。\n\n" +
     ruleBook;
   const user =
     "この手のひらを手相診断してください。出力はJSONのみ：\n" +
@@ -125,7 +126,7 @@ async function diagnose() {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         temperature: 0,
         seed: 7,
         response_format: { type: "json_object" },
@@ -135,7 +136,7 @@ async function diagnose() {
             role: "user",
             content: [
               { type: "text", text: user },
-              { type: "image_url", image_url: { url: imageDataUrl, detail: "low" } },
+              { type: "image_url", image_url: { url: imageDataUrl, detail: "high" } },
             ],
           },
         ],
