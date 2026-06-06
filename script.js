@@ -4,6 +4,10 @@
 const WORKER_URL = "https://palm-proxy.ryoyatennis95s.workers.dev"; // りょうやのキーを隠す代理サーバー（視聴者キー不要）
 const USE_WORKER = !!WORKER_URL;
 
+// 利用ログ（写真なし・結果データのみ）をGoogleスプレッドシートに記録するApps Script WebアプリのURL。
+// 公開後にここへ /exec のURLを差し込むと記録が始まる（空なら何もしない）。
+const LOG_URL = "";
+
 const LS_KEY = "codex-palm-openai-key";
 const $ = (id) => document.getElementById(id);
 
@@ -113,6 +117,23 @@ async function onFile(file) {
 }
 
 const STARS = (n) => "★★★★★☆☆☆☆☆".slice(5 - Math.max(0, Math.min(5, n)), 10 - Math.max(0, Math.min(5, n)));
+
+// 利用ログを記録（写真なし・結果データのみ／送信失敗してもUIは止めない）
+function logUsage(out) {
+  if (!LOG_URL) return;
+  try {
+    const f = out.fortunes || [];
+    const star = (n) => { const x = f.find((o) => (o.name || "").includes(n)); return x ? x.stars : ""; };
+    const payload = {
+      overall: star("総合"), love: star("恋愛"), work: star("仕事"),
+      money: star("金"), health: star("健康"),
+      color: (out.lucky || {}).color || "", item: (out.lucky || {}).item || "",
+      features: (out.features || []).map((x) => `${x.name}:${x.value}`).join("、"),
+    };
+    // mode:no-cors + text/plain でプリフライトを回避（Apps Scriptは内容を受け取れる）
+    fetch(LOG_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+  } catch (e) {}
+}
 
 // 画像から決定的なシードを作る（同じ写真→同じseed→ほぼ同じ結果／違う写真→違う結果）
 function imageSeed(str) {
@@ -288,6 +309,8 @@ function renderResult(out) {
 
   // 結果データを保持（画像保存に使う）
   lastResultData = out;
+  // 利用ログを記録（LOG_URL未設定なら何もしない）
+  logUsage(out);
   // 深掘り用コンテキスト ＋ 提案チップ ＋ ログ初期化
   lastReadingContext =
     "【特徴】" + (out.features || []).map((f) => `${f.name}:${f.value}`).join("、") +
