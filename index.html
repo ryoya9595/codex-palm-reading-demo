@@ -46,11 +46,11 @@
         <h3>手のひらの写真を用意</h3>
         <p class="hint">手のひら全体・線がはっきり写るように。明るい場所で、指を軽く開いて撮るときれいに読めます。ここに画像をドラッグ＆ドロップでもOK。</p>
         <label class="drop" id="dropArea">
-          <input type="file" id="fileInput" accept="image/*" capture="environment" hidden />
+          <input type="file" id="fileInput" accept="image/*" hidden />
           <div class="drop-inner" id="dropInner">
             <div class="drop-icon">🖐️</div>
             <strong>写真を撮る / 選ぶ</strong>
-            <span>タップしてカメラ起動、またはファイル選択</span>
+            <span>タップして、写真ライブラリから選ぶ / その場で撮影</span>
           </div>
           <img id="preview" class="preview is-hidden" alt="手のひらプレビュー" />
         </label>
@@ -68,6 +68,10 @@
         <div class="fortunes" id="fortunes"></div>
         <div class="summary" id="summary"></div>
         <div class="lucky" id="lucky"></div>
+        <div class="save-row">
+          <button type="button" id="saveImageButton" class="save-btn">📷 診断結果を画像で保存</button>
+          <span class="status-line" id="saveStatus"></span>
+        </div>
         <div class="details-wrap">
           <button type="button" id="toggleDetails" class="secondary">細かい診断結果を見る ▼</button>
           <div class="details is-hidden" id="details"></div>

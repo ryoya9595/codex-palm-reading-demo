@@ -36,6 +36,7 @@ const resultCard = $("resultCard");
 
 let imageDataUrl = "";
 let lastReadingContext = "";
+let lastResultData = null;
 
 function setLine(el, text, kind) {
   if (!el) return;
@@ -274,6 +275,8 @@ function renderResult(out) {
   const toggle = $("toggleDetails");
   if (toggle) toggle.textContent = "細かい診断結果を見る ▼";
 
+  // 結果データを保持（画像保存に使う）
+  lastResultData = out;
   // 深掘り用コンテキスト ＋ 提案チップ ＋ ログ初期化
   lastReadingContext =
     "【特徴】" + (out.features || []).map((f) => `${f.name}:${f.value}`).join("、") +
@@ -344,6 +347,125 @@ async function askFollowup(question) {
   }
 }
 
+/* ===== 診断結果カードを画像化して保存 ===== */
+function wrapLines(ctx, text, maxWidth) {
+  const lines = [];
+  String(text || "").split("\n").forEach((para) => {
+    let line = "";
+    for (const ch of para) {
+      if (ctx.measureText(line + ch).width > maxWidth && line) {
+        lines.push(line);
+        line = ch;
+      } else {
+        line += ch;
+      }
+    }
+    lines.push(line);
+  });
+  return lines;
+}
+
+function buildResultCard(out) {
+  const W = 1080, H = 1500, P = 80;
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const x = cv.getContext("2d");
+  // 背景（神秘的なグラデ）
+  const g = x.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "#2b1d52"); g.addColorStop(0.5, "#1a1838"); g.addColorStop(1, "#0e1330");
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  // 飾り枠
+  x.strokeStyle = "rgba(212,180,90,0.55)"; x.lineWidth = 3;
+  x.strokeRect(28, 28, W - 56, H - 56);
+  x.textAlign = "center";
+  // ヘッダー
+  x.fillStyle = "#E7C873"; x.font = "600 30px -apple-system,BlinkMacSystemFont,sans-serif";
+  x.fillText("✦  AI PALM READING  ✦", W / 2, 110);
+  x.fillStyle = "#ffffff"; x.font = "800 66px -apple-system,BlinkMacSystemFont,sans-serif";
+  x.fillText("手相占い診断", W / 2, 185);
+  x.fillStyle = "rgba(255,255,255,0.55)"; x.font = "400 26px -apple-system,sans-serif";
+  const d = new Date();
+  x.fillText(`${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`, W / 2, 230);
+  x.strokeStyle = "rgba(212,180,90,0.4)"; x.lineWidth = 2;
+  x.beginPath(); x.moveTo(P, 262); x.lineTo(W - P, 262); x.stroke();
+
+  let y = 320;
+  x.textAlign = "left";
+  const sectionTitle = (t) => {
+    x.fillStyle = "#E7C873"; x.font = "700 32px -apple-system,sans-serif";
+    x.fillText(t, P, y); y += 46;
+  };
+
+  // 読み取った手相
+  sectionTitle("読み取った手相");
+  x.font = "400 28px -apple-system,sans-serif"; x.fillStyle = "rgba(255,255,255,0.92)";
+  (out.features || []).slice(0, 5).forEach((f) => {
+    x.fillText(`・${f.name}：${f.value || ""}`, P + 8, y); y += 40;
+  });
+  y += 22;
+
+  // 運勢（星）
+  sectionTitle("運勢");
+  (out.fortunes || []).slice(0, 5).forEach((f) => {
+    const n = Math.max(0, Math.min(5, Number(f.stars) || 0));
+    x.fillStyle = "rgba(255,255,255,0.92)"; x.font = "600 29px -apple-system,sans-serif";
+    x.fillText(f.name || "", P + 8, y);
+    x.fillStyle = "#F2C94C"; x.font = "600 29px -apple-system,sans-serif"; x.textAlign = "right";
+    x.fillText("★★★★★☆☆☆☆☆".slice(5 - n, 10 - n), W - P, y);
+    x.textAlign = "left";
+    y += 44;
+  });
+  y += 22;
+
+  // 開運
+  const l = out.lucky || {};
+  if (l.color || l.item || l.action) {
+    sectionTitle("開運");
+    x.font = "400 28px -apple-system,sans-serif"; x.fillStyle = "rgba(255,255,255,0.92)";
+    if (l.color)  { x.fillText(`ラッキーカラー：${l.color}`, P + 8, y); y += 40; }
+    if (l.item)   { x.fillText(`ラッキーアイテム：${l.item}`, P + 8, y); y += 40; }
+    if (l.action) { x.fillText(`開運アクション：${l.action}`, P + 8, y); y += 40; }
+    y += 22;
+  }
+
+  // 総評
+  if (out.summary) {
+    sectionTitle("総評");
+    x.font = "400 27px -apple-system,sans-serif"; x.fillStyle = "rgba(255,255,255,0.88)";
+    const lines = wrapLines(x, out.summary, W - P * 2 - 8);
+    lines.slice(0, 7).forEach((ln) => { x.fillText(ln, P + 8, y); y += 38; });
+  }
+
+  // フッター
+  x.textAlign = "center"; x.fillStyle = "rgba(231,200,115,0.7)"; x.font = "500 24px -apple-system,sans-serif";
+  x.fillText("✦  Codex × AI 手相占い診断  ✦", W / 2, H - 56);
+  return cv;
+}
+
+function saveResultImage() {
+  if (!lastResultData) {
+    setLine($("saveStatus"), "先に診断してください", "err");
+    return;
+  }
+  try {
+    const cv = buildResultCard(lastResultData);
+    cv.toBlob((blob) => {
+      if (!blob) { setLine($("saveStatus"), "画像の生成に失敗しました", "err"); return; }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "手相占い診断.png";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      setLine($("saveStatus"), "画像を保存しました（スマホは長押しで保存）", "ok");
+    }, "image/png");
+  } catch (e) {
+    setLine($("saveStatus"), "保存に失敗しました", "err");
+  }
+}
+
 // events
 $("openSettings").addEventListener("click", openSettings);
 $("closeSettings").addEventListener("click", closeSettings);
@@ -396,6 +518,9 @@ retakeButton.addEventListener("click", (e) => {
   setStatus("");
 });
 diagnoseButton.addEventListener("click", diagnose);
+
+const saveImageButton = $("saveImageButton");
+if (saveImageButton) saveImageButton.addEventListener("click", saveResultImage);
 
 $("followSend").addEventListener("click", () => askFollowup());
 $("followInput").addEventListener("keydown", (e) => {
