@@ -442,28 +442,52 @@ function buildResultCard(out) {
   return cv;
 }
 
+function dataURLtoFile(dataurl, filename) {
+  const [head, b64] = dataurl.split(",");
+  const mime = (head.match(/:(.*?);/) || [])[1] || "image/png";
+  const bin = atob(b64);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new File([u8], filename, { type: mime });
+}
+
 function saveResultImage() {
   if (!lastResultData) {
     setLine($("saveStatus"), "先に診断してください", "err");
     return;
   }
+  let dataUrl;
   try {
-    const cv = buildResultCard(lastResultData);
-    cv.toBlob((blob) => {
-      if (!blob) { setLine($("saveStatus"), "画像の生成に失敗しました", "err"); return; }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "手相占い診断.png";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1500);
-      setLine($("saveStatus"), "画像を保存しました（スマホは長押しで保存）", "ok");
-    }, "image/png");
+    // 同期で生成（toBlobの非同期コールバックだとユーザー操作判定が切れて保存がブロックされるため）
+    dataUrl = buildResultCard(lastResultData).toDataURL("image/png");
   } catch (e) {
-    setLine($("saveStatus"), "保存に失敗しました", "err");
+    setLine($("saveStatus"), "画像の生成に失敗しました", "err");
+    return;
   }
+
+  // スマホ（タッチ端末）：保存シートを出して「画像を保存」をワンタップ（iOSは直接保存できないため）
+  const isTouch = window.matchMedia && window.matchMedia("(pointer:coarse)").matches;
+  if (isTouch && navigator.canShare) {
+    try {
+      const file = dataURLtoFile(dataUrl, "手相占い診断.png");
+      if (navigator.canShare({ files: [file] })) {
+        navigator
+          .share({ files: [file] })
+          .then(() => setLine($("saveStatus"), "保存メニューから「画像を保存」を選んでね", "ok"))
+          .catch(() => setLine($("saveStatus"), "", ""));
+        return;
+      }
+    } catch (e) {}
+  }
+
+  // PC等：同期でそのままダウンロード
+  const a = document.createElement("a");
+  a.href = dataUrl;
+  a.download = "手相占い診断.png";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setLine($("saveStatus"), "画像を保存しました", "ok");
 }
 
 // events
