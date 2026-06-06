@@ -6,7 +6,7 @@ const USE_WORKER = !!WORKER_URL;
 
 // 利用ログ（写真なし・結果データのみ）をGoogleスプレッドシートに記録するApps Script WebアプリのURL。
 // 公開後にここへ /exec のURLを差し込むと記録が始まる（空なら何もしない）。
-const LOG_URL = "";
+const LOG_URL = "https://script.google.com/macros/s/AKfycbwEtYbN9Oj_KkW0QHEqZWc6g1r54uTRBXVJ0cPxIIbzCYP7FwHmXXf09dFhEhsjPAdiFA/exec";
 
 const LS_KEY = "codex-palm-openai-key";
 const $ = (id) => document.getElementById(id);
