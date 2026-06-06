@@ -114,6 +114,13 @@ async function onFile(file) {
 
 const STARS = (n) => "★★★★★☆☆☆☆☆".slice(5 - Math.max(0, Math.min(5, n)), 10 - Math.max(0, Math.min(5, n)));
 
+// 画像から決定的なシードを作る（同じ写真→同じseed→ほぼ同じ結果／違う写真→違う結果）
+function imageSeed(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
 async function diagnose() {
   if (!USE_WORKER && !getKey()) {
     setStatus("先に設定からAPIキーを登録してください", "err");
@@ -138,15 +145,19 @@ async function diagnose() {
     '"summary":"総評（3〜4行）","lucky":{"color":"ラッキーカラー","item":"ラッキーアイテム","action":"今日の開運アクション"},' +
     '"details":[{"name":"総合運","basis":"観察した特徴 → どのルールに当てはまるか → だからこの評価、という根拠を1〜2文で"},{"name":"恋愛運","basis":"..."},{"name":"仕事運","basis":"..."},{"name":"金運","basis":"..."},{"name":"健康運","basis":"..."}],' +
     '"suggestions":["この手相の人が次に気になりそうな深掘り質問を4つ。短く。例：金運をもっと詳しく／結婚の時期は？／向いてる仕事は？／今年の運勢は？"]}\n' +
-    "featuresは4〜6個。readingはたっぷり長く。fortunesとdetailsは必ずこの5項目・starsは1〜5の整数。suggestionsは4つ・この手相に合わせた具体的な質問文。detailsは各運勢の判定根拠（観察した特徴とルールの対応）を明確に。手のひらがある程度でも写っていれば、多少線が薄くても必ず ok:true で診断する。画像に手のひらがまったく写っていない（手以外の被写体）、または真っ暗・極端なブレで手だと判別すらできない場合のみ {\"ok\":false,\"message\":\"手のひらがはっきり写っていません。明るい場所で手のひら全体を撮り直してください。\"} を返す。";
+    "featuresは4〜6個。readingはたっぷり長く。fortunesとdetailsは必ずこの5項目・starsは1〜5の整数。suggestionsは4つ・この手相に合わせた具体的な質問文。detailsは各運勢の判定根拠（観察した特徴とルールの対応）を明確に。" +
+    "【星3以下の運勢】そのtextには必ず、前向きで具体的な改善アクション（こうすると上向く、という提案）を1つ自然に添えること（例：金運★2→『固定費を1つ見直して財布を整えると流れが変わる』）。落ち込ませず、伸びしろとして前向きに。" +
+    "【バリエーション必須】ラッキーカラー・ラッキーアイテム・開運アクション・summaryは、読み取った特徴ごとに必ず内容を変えること。『青』『ノート』など無難な定番に固定するのは禁止。色は赤・橙・黄・緑・藍・紫・白・金・桃・水色・茶など幅広い中から、その人の特徴に合うものを選ぶ。" +
+    "【星の使い方】starsを全部4〜5に寄せない。特徴に応じて1〜5を素直に使い分け、メリハリをつける。" +
+    "手のひらがある程度でも写っていれば、多少線が薄くても必ず ok:true で診断する。画像に手のひらがまったく写っていない（手以外の被写体）、または真っ暗・極端なブレで手だと判別すらできない場合のみ {\"ok\":false,\"message\":\"手のひらがはっきり写っていません。明るい場所で手のひら全体を撮り直してください。\"} を返す。";
 
   setStatus("手相を読み取り中…（10〜20秒ほど）", "loading");
   diagnoseButton.disabled = true;
   try {
     const res = await callOpenAI({
       model: "gpt-4o",
-      temperature: 0,
-      seed: 7,
+      temperature: 0.8,
+      seed: imageSeed(imageDataUrl),
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: sys },
