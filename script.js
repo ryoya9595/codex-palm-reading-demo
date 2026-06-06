@@ -135,11 +135,31 @@ function logUsage(out) {
   } catch (e) {}
 }
 
-// 画像から決定的なシードを作る（同じ写真→同じseed→ほぼ同じ結果／違う写真→違う結果）
+// 画像から決定的なシードを作る（同じ写真→同じseed／違う写真→違うseed）
 function imageSeed(str) {
   let h = 5381;
   for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
   return Math.abs(h);
+}
+
+// 写真ごとに診断結果をキャッシュ（同じ写真は毎回まったく同じ結果を返す＝再現性を保証）
+const CACHE_KEY = "codex-palm-cache";
+function getCachedResult(seed) {
+  try {
+    const m = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+    return m["s" + seed] || null;
+  } catch (e) {
+    return null;
+  }
+}
+function setCachedResult(seed, out) {
+  try {
+    const m = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+    m["s" + seed] = out;
+    const keys = Object.keys(m);
+    if (keys.length > 50) delete m[keys[0]]; // 上限50件（古いものから破棄）
+    localStorage.setItem(CACHE_KEY, JSON.stringify(m));
+  } catch (e) {}
 }
 
 async function diagnose() {
@@ -150,6 +170,14 @@ async function diagnose() {
   }
   if (!imageDataUrl) {
     setStatus("先に手のひらの写真を選んでください", "err");
+    return;
+  }
+  // 同じ写真は前回と全く同じ結果を返す（キャッシュ）。違う写真は新規に診断。
+  const seed = imageSeed(imageDataUrl);
+  const cached = getCachedResult(seed);
+  if (cached) {
+    renderResult(cached);
+    setStatus("診断完了！", "ok");
     return;
   }
   const ruleBook = typeof PALM_KNOWLEDGE !== "undefined" ? PALM_KNOWLEDGE : "";
@@ -178,7 +206,7 @@ async function diagnose() {
     const res = await callOpenAI({
       model: "gpt-4o",
       temperature: 0.8,
-      seed: imageSeed(imageDataUrl),
+      seed: seed,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: sys },
@@ -201,6 +229,7 @@ async function diagnose() {
       setStatus(out.message || "手のひらをうまく読み取れませんでした。撮り直してください。", "err");
       return;
     }
+    setCachedResult(seed, out); // 同じ写真は次回からこの結果を再利用
     renderResult(out);
     setStatus("診断完了！", "ok");
   } catch (e) {
